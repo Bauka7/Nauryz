@@ -1,59 +1,125 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 public class PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
     public Transform playerCamera;
-    
+
     public float speed = 5f;
     public float gravity = -9.81f;
     public float jumpHeight = 1.5f;
-    public float mouseSensitivity = 100f;
+    public float mouseSensitivity = 2f;
 
-    Vector3 velocity;
-    bool isGrounded;
-    float xRotation = 0f;
+    private Vector3 velocity;
+    private float xRotation = 0f;
+
+    void Awake()
+    {
+        if (controller == null)
+        {
+            controller = GetComponent<CharacterController>();
+        }
+
+        if (playerCamera == null && Camera.main != null)
+        {
+            playerCamera = Camera.main.transform;
+        }
+    }
 
     void Start()
     {
-        // Блокируем курсор мыши в центре экрана и скрываем его
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     void Update()
     {
-        // --- 1. ПРОВЕРКА ЗЕМЛИ ---
-        isGrounded = controller.isGrounded;
-        if (isGrounded && velocity.y < 0)
+        if (controller == null || playerCamera == null)
+        {
+            return;
+        }
+
+        HandleLook();
+        HandleMovement();
+    }
+
+    void HandleLook()
+    {
+        Vector2 lookInput = ReadLookInput();
+
+        float mouseX = lookInput.x * mouseSensitivity;
+        float mouseY = lookInput.y * mouseSensitivity;
+
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        transform.Rotate(Vector3.up * mouseX);
+    }
+
+    void HandleMovement()
+    {
+        bool isGrounded = controller.isGrounded;
+        if (isGrounded && velocity.y < 0f)
         {
             velocity.y = -2f;
         }
 
-        // --- 2. ВРАЩЕНИЕ КАМЕРЫ (МЫШЬ) ---
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f); // Ограничиваем, чтобы не сломать шею
-
-        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f); // Камера смотрит вверх/вниз
-        transform.Rotate(Vector3.up * mouseX); // Персонаж поворачивается влево/вправо
-
-        // --- 3. ДВИЖЕНИЕ (WASD) ---
-        float x = Input.GetAxis("Horizontal");
-        float z = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * x + transform.forward * z;
+        Vector2 moveInput = ReadMoveInput();
+        Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         controller.Move(move * speed * Time.deltaTime);
 
-        // --- 4. ПРЫЖОК (Пробел) ---
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        if (ReadJumpPressed() && isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        // Применяем гравитацию
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
+    }
+
+    Vector2 ReadMoveInput()
+    {
+#if ENABLE_INPUT_SYSTEM
+        Vector2 input = Vector2.zero;
+
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) input.x -= 1f;
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) input.x += 1f;
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) input.y -= 1f;
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) input.y += 1f;
+        }
+
+        return input.normalized;
+#else
+        return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
+#endif
+    }
+
+    Vector2 ReadLookInput()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+        {
+            return Mouse.current.delta.ReadValue() * Time.deltaTime;
+        }
+
+        return Vector2.zero;
+#else
+        return new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")) * Time.deltaTime;
+#endif
+    }
+
+    bool ReadJumpPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+#else
+        return Input.GetButtonDown("Jump");
+#endif
     }
 }
