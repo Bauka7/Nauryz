@@ -39,36 +39,35 @@ public class NPCInteraction : MonoBehaviour
         bool ePressed = Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
 
         if (isPlayerNear && ePressed)
+{
+    // ❗ если квест уже завершён — НЕ показываем старый диалог
+    if (NauryzKozheQuestManager.Instance != null &&
+        NauryzKozheQuestManager.Instance.questCompleted)
+    {
+        return;
+    }
+
+    if (interactText != null)
+        interactText.SetActive(false);
+
+    if (speechBubble != null)
+    {
+        if (bubbleText != null)
         {
-            if (interactText != null)
-                interactText.SetActive(false);
-
-            if (speechBubble != null)
-            {
-                if (bubbleText != null)
-                {
-                    if (NauryzKozheQuestManager.Instance != null &&
-                        NauryzKozheQuestManager.Instance.questCompleted)
-                    {
-                        bubbleText.text = thanksMessage;
-                    }
-                    else
-                    {
-                        bubbleText.text = introMessage;
-                    }
-                }
-
-                speechBubble.SetActive(true);
-                CancelInvoke(nameof(HideBubble));
-                Invoke(nameof(HideBubble), 4f);
-            }
-
-            if (NauryzKozheQuestManager.Instance != null &&
-                !NauryzKozheQuestManager.Instance.questStarted)
-            {
-                hasTalkedOnce = true;
-            }
+            bubbleText.text = introMessage;
         }
+
+        speechBubble.SetActive(true);
+        CancelInvoke(nameof(HideBubble));
+        Invoke(nameof(HideBubble), 4f);
+    }
+
+    if (NauryzKozheQuestManager.Instance != null &&
+        !NauryzKozheQuestManager.Instance.questStarted)
+    {
+        hasTalkedOnce = true;
+    }
+}
     }
 
     void HideBubble()
@@ -114,4 +113,16 @@ public class NPCInteraction : MonoBehaviour
         if (speechBubble != null)
             speechBubble.SetActive(false);
     }
+
+    public void ShowThankYou()
+{
+    if (speechBubble != null && bubbleText != null)
+    {
+        bubbleText.text = thanksMessage;
+        speechBubble.SetActive(true);
+
+        CancelInvoke(nameof(HideBubble));
+        Invoke(nameof(HideBubble), 4f);
+    }
+}
 }
