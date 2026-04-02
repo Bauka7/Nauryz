@@ -5,6 +5,7 @@ public class CauldronInteraction : MonoBehaviour
 {
     public GameObject steamVFX;
     public NPCInteraction npc;
+    public CauldronCookingEffect cookingEffect; // Добавим эффект варки
 
     private bool isPlayerNear = false;
 
@@ -12,6 +13,12 @@ public class CauldronInteraction : MonoBehaviour
     {
         if (steamVFX != null)
             steamVFX.SetActive(false);
+
+        // Найдём CauldronCookingEffect если он не назначен
+        if (cookingEffect == null)
+        {
+            cookingEffect = GetComponent<CauldronCookingEffect>();
+        }
 
         if (NauryzKozheQuestManager.Instance != null)
             NauryzKozheQuestManager.Instance.HideCauldronPrompt();
@@ -35,6 +42,13 @@ public class CauldronInteraction : MonoBehaviour
 
                 if (steamVFX != null)
                     steamVFX.SetActive(true);
+
+                // Запускаем эффект варки
+                if (cookingEffect != null)
+                {
+                    cookingEffect.PlayCookingEffect();
+                    Debug.Log("🍲 Cooking effect started!");
+                }
 
                 if (npc != null)
                     npc.ShowThankYou();

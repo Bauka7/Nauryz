@@ -18,6 +18,9 @@ public class OYURangeGameManager : MonoBehaviour
     [Header("Game Settings")]
     public int totalTargets = 5;
 
+    [Header("Bow System")]
+    public BowSpawner bowSpawner;
+
     [HideInInspector] public bool playerInsideNPCZone = false;
     [HideInInspector] public bool hasTalkedToNPC = false;
     [HideInInspector] public bool isGameActive = false;
@@ -83,6 +86,16 @@ public class OYURangeGameManager : MonoBehaviour
             rangeResultText.SetActive(false);
 
         UpdateGameUI();
+
+        // Спаунируем лук
+        if (bowSpawner != null)
+        {
+            bowSpawner.SpawnBow();
+        }
+        else
+        {
+            Debug.LogWarning("BowSpawner not assigned!");
+        }
     }
 
     public void CompleteGame()
@@ -95,6 +108,12 @@ public class OYURangeGameManager : MonoBehaviour
 
         if (rangeResultText != null)
             rangeResultText.SetActive(true);
+
+        // Удаляем лук
+        if (bowSpawner != null)
+        {
+            bowSpawner.RemoveBow();
+        }
     }
 
     public void FinishGame()
@@ -120,6 +139,12 @@ public class OYURangeGameManager : MonoBehaviour
         if (rangeResultText != null)
             rangeResultText.SetActive(false);
 
+        // Удаляем лук
+        if (bowSpawner != null)
+        {
+            bowSpawner.RemoveBow();
+        }
+
         UpdateGameUI();
     }
 
@@ -130,5 +155,24 @@ public class OYURangeGameManager : MonoBehaviour
 
         if (scoreText != null)
             scoreText.text = "Score: " + score;
+    }
+
+    public void OnTargetHit(int points)
+    {
+        if (!isGameActive) return;
+
+        score += points;
+        targetsLeft--;
+
+        Debug.Log($"Target hit! Points: {points}, Total Score: {score}, Targets left: {targetsLeft}");
+
+        UpdateGameUI();
+
+        // Если все мишени поражены
+        if (targetsLeft <= 0)
+        {
+            CompleteGame();
+            Debug.Log("GAME COMPLETED! Final Score: " + score);
+        }
     }
 }
