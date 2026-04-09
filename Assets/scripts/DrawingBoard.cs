@@ -20,10 +20,14 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
     private List<Color[]> undoHistory = new List<Color[]>(); // Хранилище старых состояний холста
 
     private Texture2D drawTexture;
+    private Material runtimeCanvasMaterial;
 
     void Start()
     {
-        drawTexture = new Texture2D(textureWidth, textureHeight);
+        drawTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false);
+        drawTexture.name = "DrawingBoardRuntimeTexture";
+        drawTexture.wrapMode = TextureWrapMode.Clamp;
+        drawTexture.filterMode = FilterMode.Bilinear;
         Color[] whitePixels = new Color[textureWidth * textureHeight];
         for (int i = 0; i < whitePixels.Length; i++) whitePixels[i] = Color.white;
         
@@ -32,13 +36,57 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
         
         rawImage.texture = drawTexture;
 
-        if (target3DCanvas != null)
-        {
-            target3DCanvas.material.mainTexture = drawTexture;
-        }
+        Setup3DCanvasMaterial();
+        ApplyTextureTo3DCanvas();
         
         // Сохраняем самый первый (чистый) холст в историю
         SaveState(); 
+    }
+
+    void Setup3DCanvasMaterial()
+    {
+        if (target3DCanvas == null) return;
+
+        Material sourceMaterial = target3DCanvas.sharedMaterial;
+        if (sourceMaterial != null)
+        {
+            runtimeCanvasMaterial = new Material(sourceMaterial);
+        }
+        else
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Unlit/Texture");
+
+            if (shader == null)
+            {
+                Debug.LogWarning("DrawingBoard: no suitable shader found for the 3D canvas.");
+                return;
+            }
+
+            runtimeCanvasMaterial = new Material(shader);
+        }
+
+        if (runtimeCanvasMaterial.HasProperty("_BaseColor"))
+            runtimeCanvasMaterial.SetColor("_BaseColor", Color.white);
+
+        if (runtimeCanvasMaterial.HasProperty("_Color"))
+            runtimeCanvasMaterial.SetColor("_Color", Color.white);
+
+        target3DCanvas.material = runtimeCanvasMaterial;
+    }
+
+    void ApplyTextureTo3DCanvas()
+    {
+        if (runtimeCanvasMaterial == null || drawTexture == null) return;
+
+        if (runtimeCanvasMaterial.HasProperty("_BaseMap"))
+            runtimeCanvasMaterial.SetTexture("_BaseMap", drawTexture);
+
+        if (runtimeCanvasMaterial.HasProperty("_MainTex"))
+            runtimeCanvasMaterial.SetTexture("_MainTex", drawTexture);
+
+        runtimeCanvasMaterial.mainTexture = drawTexture;
     }
 
     // --- Функция смены цвета ---
@@ -81,6 +129,7 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
             // Применяем его к текстуре
             drawTexture.SetPixels(lastState);
             drawTexture.Apply();
+            ApplyTextureTo3DCanvas();
         }
     }
 
@@ -135,5 +184,19 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
             }
         }
         drawTexture.Apply(); 
+        ApplyTextureTo3DCanvas();
+    }
+
+    void OnDestroy()
+    {
+        if (runtimeCanvasMaterial != null)
+        {
+            Destroy(runtimeCanvasMaterial);
+        }
+
+        if (drawTexture != null)
+        {
+            Destroy(drawTexture);
+        }
     }
 }
