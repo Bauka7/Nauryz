@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections.Generic; // Нужно для работы со списками (историей шагов)
 
 public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
 {
@@ -12,44 +13,99 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
     public Color brushColor = Color.black;
 
     [Header("Связь с 3D миром")]
-    [Tooltip("Перетащите сюда 3D-объект холста, на котором должен появляться рисунок")]
-    public MeshRenderer target3DCanvas; // Ссылка на 3D холст
+    public MeshRenderer target3DCanvas; 
+
+    [Header("Настройки Отмены (Undo)")]
+    public int maxUndoSteps = 10; // Сколько шагов назад можно отменить (чтобы не забивать память)
+    private List<Color[]> undoHistory = new List<Color[]>(); // Хранилище старых состояний холста
 
     private Texture2D drawTexture;
 
     void Start()
     {
-        // Создаем текстуру
         drawTexture = new Texture2D(textureWidth, textureHeight);
         Color[] whitePixels = new Color[textureWidth * textureHeight];
         for (int i = 0; i < whitePixels.Length; i++) whitePixels[i] = Color.white;
+        
         drawTexture.SetPixels(whitePixels);
         drawTexture.Apply();
-
-        // Применяем к UI
+        
         rawImage.texture = drawTexture;
 
-        // НОВОЕ: Передаем эту же текстуру 3D-объекту!
         if (target3DCanvas != null)
         {
-            // Устанавливаем текстуру как основную для материала 3D объекта
             target3DCanvas.material.mainTexture = drawTexture;
+        }
+        
+        // Сохраняем самый первый (чистый) холст в историю
+        SaveState(); 
+    }
+
+    // --- Функция смены цвета ---
+    public void SetColor(string colorName)
+    {
+        switch (colorName.ToLower())
+        {
+            case "red": brushColor = Color.red; break;
+            case "green": brushColor = Color.green; break;
+            case "blue": brushColor = Color.blue; break;
+            case "black": brushColor = Color.black; break;
         }
     }
 
-    public void OnPointerDown(PointerEventData eventData)
+    // --- Функции сохранения и отмены (Undo) ---
+    void SaveState()
     {
-        if (eventData.button == PointerEventData.InputButton.Left) Draw(eventData);
+        // Копируем текущие пиксели холста
+        Color[] currentPixels = drawTexture.GetPixels();
+        undoHistory.Add(currentPixels);
+        
+        // Если шагов больше разрешенного, удаляем самую старую запись
+        if (undoHistory.Count > maxUndoSteps + 1)
+        {
+            undoHistory.RemoveAt(0); 
+        }
     }
 
-    public void OnDrag(PointerEventData eventData)
+    public void Undo()
     {
-        if (eventData.button == PointerEventData.InputButton.Left) Draw(eventData);
+        // Если в истории больше одного шага (нельзя отменить то, чего не было)
+        if (undoHistory.Count > 1) 
+        {
+            // Удаляем текущее испорченное состояние
+            undoHistory.RemoveAt(undoHistory.Count - 1);
+            
+            // Берем предыдущее состояние
+            Color[] lastState = undoHistory[undoHistory.Count - 1];
+            
+            // Применяем его к текстуре
+            drawTexture.SetPixels(lastState);
+            drawTexture.Apply();
+        }
+    }
+
+    // --- Рисование ---
+    public void OnPointerDown(PointerEventData eventData) 
+    { 
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            // Сохраняем состояние ДО того, как начали вести линию
+            SaveState(); 
+            Draw(eventData); 
+        }
+    }
+    
+    public void OnDrag(PointerEventData eventData) 
+    { 
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            Draw(eventData); 
+        }
     }
 
     void Draw(PointerEventData eventData)
     {
-        if (rawImage == null) return;
+        if (rawImage == null) return; 
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             rawImage.rectTransform, eventData.position, eventData.pressEventCamera, out Vector2 localCursor);
@@ -78,7 +134,6 @@ public class DrawingBoard : MonoBehaviour, IDragHandler, IPointerDownHandler
                 }
             }
         }
-        // Когда мы применяем изменения, они автоматически обновятся и в UI, и на 3D модели!
-        drawTexture.Apply();
+        drawTexture.Apply(); 
     }
 }
