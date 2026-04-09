@@ -11,7 +11,7 @@ public class ArrowProjectile : MonoBehaviour
     private float lifetime = 15f;
     private float minVelocityThreshold = 0.1f;
 
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody>();
         if (rb == null)
@@ -21,8 +21,8 @@ public class ArrowProjectile : MonoBehaviour
 
         rb.isKinematic = false;
         rb.useGravity = true;
-        rb.mass = 0.05f; // Легче для лучшего полета
-        rb.linearDamping = 0.05f; // Меньше сопротивления
+        rb.mass = 0.05f;
+        rb.linearDamping = 0.05f;
         rb.angularDamping = 0.1f;
         rb.constraints = RigidbodyConstraints.None;
 

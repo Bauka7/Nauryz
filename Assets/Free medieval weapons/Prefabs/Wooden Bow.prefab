@@ -181,10 +181,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc2891ca176f0b3458260919d07ec835, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BowController
-  arrowPrefab: {fileID: 0}
+  arrowPrefab: {fileID: 1959729250425484, guid: 5187dfa4d8f19524e8bbf7c6894b7de7, type: 3}
   drawForce: 100
   drawSensitivity: 1.5
-  maxDrawTime: 1.5
+  arrowLocalPosition: {x: 0.3, y: -0.18, z: 0.75}
+  maxPullBack: 0.25
   gameManager: {fileID: 0}
 --- !u!1001 &5599310772494657731
 PrefabInstance:
